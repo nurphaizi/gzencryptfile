@@ -11,7 +11,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "dbSqlite3.h"
-
+#include "encryptFile.h"
 
 namespace sqlite
 
@@ -83,7 +83,9 @@ namespace sqlite
 
                 sql = "CREATE TABLE CATALOG(" \
                     "ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL," \
-                    "NAME TEXT NOT NULL,SIZE REAL," \
+                    "NAME TEXT NOT NULL,"\
+                     "SIZE REAL," \
+                    "HASH TEXT," \
                     "CREATION_TIME DATETIME," \
                     "LAST_WRITE_TIME DATETIME )";
 
@@ -103,13 +105,15 @@ namespace sqlite
                 }
             }
         }
-    bool SqliteConnection:: fileAllreadyUploaded(const path source_file)
+    bool SqliteConnection:: fileAllreadyUploaded(const path source_file,const char* hash,const int hash_len,const size_t SIZE,const time_t CREATION_TIME, const time_t LAST_WRITE_TIME)
         {
+
             int result = 0;
             std::stringstream ssql;
             ssql << "SELECT * FROM CATALOG WHERE NAME LIKE \'"<< source_file.filename().string()<<"\'";
-            ssql << " AND SIZE = " << file_size(source_file);
-            ssql << " AND CREATION_TIME = " << creation_time(source_file);
+            ssql << " AND SIZE = " << SIZE;
+            ssql << " AND CREATION_TIME = " << CREATION_TIME;
+            ssql << " AND HASH = \'" << hash << "\'";
             sql = ssql.str();
             std::shared_ptr<char*> psql = std::make_shared<char*>(new char[sql.length()+1]);
             strcpy(*psql, sql.c_str());
@@ -127,14 +131,16 @@ namespace sqlite
             return result;
         }
 
-        bool SqliteConnection::insertRow(const path source_file)
+        bool SqliteConnection::insertRow(const path source_file, const char* hash, const int hash_len, const size_t SIZE, const time_t CREATION_TIME,const time_t LAST_WRITE_TIME)
         {
+
             std::stringstream ssql;
-            ssql << "INSERT INTO CATALOG (NAME,SIZE,CREATION_TIME,LAST_WRITE_TIME) ";
+            ssql << "INSERT INTO CATALOG (NAME,SIZE,CREATION_TIME,LAST_WRITE_TIME,HASH) ";
             ssql << "VALUES (\'" << source_file.filename().string() << "\', ";
-            ssql << file_size(source_file) << ",";
-            ssql << creation_time(source_file) << ",";
-            ssql << last_write_time(source_file) << ")";
+            ssql << SIZE << ",";
+            ssql << CREATION_TIME << ",";
+            ssql << LAST_WRITE_TIME<<",";
+            ssql<< "\'" <<  hash << "\')";
             sql = ssql.str();
             std::shared_ptr<char*> psql = std::make_shared<char*>(new char[sql.length() + 1]);
             strcpy(*psql, sql.c_str());
